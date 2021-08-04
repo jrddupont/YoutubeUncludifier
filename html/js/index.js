@@ -1,5 +1,26 @@
 
-function addRow(isChecked, url, onTop){
+var dropdownHTML = `
+<select class="filtertype">
+	<option value="any">Any Channel Contains:</option>
+	<option value="specificContains">does contain:</option>
+	<option value="specificNotContains">does not contain:</option>
+</select>
+`
+
+var dropDownUpdate = function(dropDownElem){
+	var channelNameText = dropDownElem.parentNode.getElementsByClassName("channelNameTextBox")[0]
+	if(dropDownElem.childNodes[1].value.includes("specific")){
+		if(channelNameText.innerHTML == "n/a"){
+			channelNameText.innerHTML = "Edit Me"
+		}
+		channelNameText.setAttribute( "contenteditable", "true" )
+	} else {
+		channelNameText.innerHTML = "n/a"
+		channelNameText.setAttribute( "contenteditable", "false" )
+	}
+}
+
+function addRow(channelName, channelFilterType, filter, onTop){
 	var table = document.getElementById("table");
 	
 	if(onTop){
@@ -8,17 +29,36 @@ function addRow(isChecked, url, onTop){
 		var row = table.insertRow(table.rows.length);
 	}
 	
-	
-	var checkCell = row.insertCell(0);
-	var urlCell = row.insertCell(1);
-	var removeCell = row.insertCell(2);
-	
-	checkCell.innerHTML = "<input type=\"checkbox\" id=\"isExactBox\">";
-	urlCell.innerHTML = url;
-	urlCell.setAttribute( "contenteditable", "true" )
+	var channelNameText = row.insertCell(0);
+	var channelFilterTypeDropdown = row.insertCell(1);
+	var filterText = row.insertCell(2);
+	var removeCell = row.insertCell(3);
+
+	var specificChannel = channelFilterType.includes("specific")
+
+	channelNameText.classList.add("channelNameTextBox")
+	if(specificChannel){
+		channelNameText.innerHTML = channelName
+		channelNameText.setAttribute( "contenteditable", "true" )
+	} else {
+		channelNameText.innerHTML = "n/a"
+		channelNameText.setAttribute( "contenteditable", "false" )
+	}
+
+	channelFilterTypeDropdown.innerHTML = dropdownHTML
+	if(specificChannel){
+		channelFilterTypeDropdown.childNodes[1].value = channelFilterType;
+	} else {
+		channelFilterTypeDropdown.childNodes[1].value = "any";
+	}
+
+	channelFilterTypeDropdown.onchange = function(){dropDownUpdate(this)}
+
+	filterText.innerHTML = filter;
+	filterText.setAttribute( "contenteditable", "true" )
+
 	removeCell.innerHTML = "<span class=\"table-remove glyphicon glyphicon-remove\"></span>";
 	removeCell.childNodes[0].onclick = function() { removeRow(this) };
-	checkCell.childNodes[0].checked = isChecked;
 }
 
 function removeRow(elem){
@@ -27,75 +67,61 @@ function removeRow(elem){
 
 function exportData(){
 	var table = document.getElementById("table");
-	
-	var chunks = {};
-	var numberOfChunks = 0;
-	var currentChunk = [];
-	var values = [];
-	for (var i = 1, row; row = table.rows[i]; i++) {
-		var isExactBox = row.cells[0].childNodes[0].checked;
-		var urlText = row.cells[1].innerText;
-		var currentRow = {};
-		currentRow["e"] = isExactBox ? "t" : "f";
-		currentRow["u"] = urlText;
-		values.push({'e': isExactBox, 'u': urlText});
-		if(JSON.stringify(currentChunk).length + JSON.stringify(currentRow).length > 100){
-			chunks[numberOfChunks] = currentChunk;
-			currentChunk = [];
-			numberOfChunks++;
-		}
-		currentChunk.push(currentRow);
-	}
-	if(currentChunk.length != 0){
-		chunks[numberOfChunks] = currentChunk;
-	}
-	chunks["number"] = numberOfChunks + 1;
-	
-	if(numberOfChunks > 500 || JSON.stringify(chunks).length > 100000){
-		tooBig();
-		return;
-	}
-	
-	chrome.storage.sync.clear();
-	chrome.storage.sync.set(chunks);
-	
-	chrome.storage.local.clear();
-	chrome.storage.local.set({'vals':values});
-}
 
-function tooBig(){
-	document.getElementById("export").innerHTML = "Sorry, you have exceeded the amount of space that chrome can store in the cloud, please remove some entries.";
+	var saveData = {}
+
+	saveData["globalFilters"] = {
+		"currentlyLive": document.getElementById("currentlyLive").checked,
+		"premiering": document.getElementById("premiering").checked,
+		"setReminder": document.getElementById("setReminder").checked
+	}
+
+	var specificFilters = []
+	for (var i = 1, row; row = table.rows[i]; i++) {
+		var channelName = row.cells[0].innerText
+		var channelFilterType = row.cells[1].childNodes[1].value
+		var filterText = row.cells[2].innerText
+
+		if(!channelFilterType.includes("specific")){
+			channelName = ""
+		}
+
+		specificFilters.push({
+			"channelName": channelName,
+			"channelFilterType": channelFilterType,
+			"filterText": filterText
+		})
+	}
+
+	saveData["specificFilters"] = specificFilters
+
+	chrome.storage.sync.set(saveData);
+
+	// Display a little text element that shows that the save worked
+	var noticeElement = document.getElementById("export")
+	noticeElement.innerHTML = "Data saved!"
+	noticeElement.style.transitionDuration = '0s'
+	noticeElement.style.opacity = '1'
+
+	setTimeout(function(){
+		noticeElement.style.transitionDuration = '1s'
+		noticeElement.style.opacity = '0'
+	}, 500);
 }
 
 function refresh(){
-	chrome.storage.sync.get(['number'], function(numResult){
-		if(numResult.number == 0){
-			return;
+	chrome.storage.sync.get(['specificFilters', 'globalFilters'], function(data){
+		for (const row of data.specificFilters) {
+			addRow(row.channelName, row.channelFilterType, row.filterText, false)
 		}
-		console.log(numResult.number);
-		var keys = [];
-		for(var i = 0; i <= numResult.number - 1; i++){
-			keys.push(""+i);
-		}
-		
-		chrome.storage.sync.get(keys, function(result){
-			var values = [];
-			for(var i = 0; i <= numResult.number - 1; i++){
-				result[i].forEach(function(e){
-					addRow(e.e=="t", e.u, false)
-					values.push({'e': e.e=="t", 'u': e.u});
-					console.log(e);
-				});
-			}
-			
-			chrome.storage.local.clear();
-			chrome.storage.local.set({'vals':values});
-			
-		});
+
+		document.getElementById("currentlyLive").checked = data.globalFilters.currentlyLive
+		document.getElementById("premiering").checked = data.globalFilters.premiering
+		document.getElementById("setReminder").checked = data.globalFilters.setReminder
 	});
 }
 
-document.getElementById("addRowID").onclick = function() { addRow(false, "Edit Me", true) };
+document.getElementById("addRowID").onclick = function() { addRow("", "default", "Edit Me", true) };
 document.getElementById("exportDataID").onclick = exportData;
 
 refresh();

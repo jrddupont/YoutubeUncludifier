@@ -3,7 +3,7 @@
 
 <head>
 	<meta charset="UTF-8">
-	<title>Tab Blacklist Options</title>
+	<title>Youtube Uncludifier Options</title>
   
 	<link rel='stylesheet prefetch' href='http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css'>
 	<link rel='stylesheet prefetch' href='http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css'>
@@ -14,14 +14,39 @@
 <body>
 <div class="container">
 	<h1>Options</h1>
-	<p>To add a custom blacklist item, click the plus. If a new tab is opened with the matching URL, it will be instantly closed. If "Exact Match" is checked, only that exact URL will be closed, otherwise any URL containing that string will be closed. Be careful, if you blacklist "a" without exact match, you may not be able to open any tabs at all.</p>
+
+	<hr>
+
+	<h2>Global Filters</h2>
+	<p>Check these boxes if you want to remove these specific types of videos</p>
+	<input type="checkbox" id="currentlyLive">
+	<label for="currentlyLive"> Remove "Live" videos</label><br>
+
+	<input type="checkbox" id="premiering">
+	<label for="premiering"> Remove "Premiering" videos</label><br>
+
+	<input type="checkbox" id="setReminder">
+	<label for="setReminder"> Remove "Reminder" videos</label><br>
+
+	<hr>
+
+	<h2>Specific video and channel options</h2>
+	<p>
+		To add a custom blacklist item, click the plus. You can filter out any video that has a specific phrase in the title by choosing the "Any Channel Contains" channel filter option.<br>
+		You can filter out videos from some a specific channel by choosing the "does contain" or "does not contain" channel filter option.<br>
+		<ul>
+			<li>"Does Contain": This option will filter out any video from the selected channel that contains the configured text.</li>
+			<li>"Does Not Contain": This option will filter out all videos from a channel that do not contain the configured text.</li>
+		</ul>
+	</p>
   
 	<div class="table-editable">
 		<span id="addRowID" class="table-add glyphicon glyphicon-plus"></span>
 		<table class="table" id="table">
 			<tr>
-				<th>Exact Match</th>
-				<th>URL</th>
+				<th>Channel Name</th>
+				<th>Channel Filter Type</th>
+				<th>Filter Text</th>
 				<th></th>
 			</tr>
 		</table>
